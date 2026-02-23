@@ -83,6 +83,18 @@
     "connecting": "Conectando",
     "error": "Error"
   },
+  "edit": {
+    "editMode": "Modo edici\u00f3n",
+    "exitEdit": "Salir de edici\u00f3n",
+    "entityName": "Nombre",
+    "entityNamePlaceholder": "Nombre personalizado",
+    "entityVisible": "Visible",
+    "entityHidden": "Oculta",
+    "areaName": "Nombre del \u00e1rea",
+    "areaNamePlaceholder": "Nombre personalizado",
+    "areaVisible": "Visible",
+    "done": "Listo"
+  },
   "common": {
     "on": "Encendido",
     "off": "Apagado",

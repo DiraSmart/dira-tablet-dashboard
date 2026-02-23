@@ -2,9 +2,11 @@ import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SidebarItem } from './SidebarItem';
 import { ConnectionStatus } from '@/components/common/ConnectionStatus';
+import { Icon } from '@/components/common/Icon';
 import { useAppStore } from '@/store/appStore';
 import { useEntityStore } from '@/store/entityStore';
 import { SIDEBAR_ICONS } from '@/utils/iconMap';
+import { mdiPencil, mdiCheck } from '@mdi/js';
 import type { ViewId } from '@/types/navigation';
 
 interface SidebarEntry {
@@ -26,6 +28,8 @@ export const Sidebar = memo(function Sidebar() {
   const { t } = useTranslation();
   const activeView = useAppStore((s) => s.activeView);
   const setActiveView = useAppStore((s) => s.setActiveView);
+  const editMode = useAppStore((s) => s.editMode);
+  const toggleEditMode = useAppStore((s) => s.toggleEditMode);
   const entities = useEntityStore((s) => s.entities);
 
   const counts = useMemo(() => {
@@ -64,6 +68,23 @@ export const Sidebar = memo(function Sidebar() {
           />
         ))}
       </nav>
+
+      {/* Edit Mode Toggle */}
+      <div className="px-2 py-2 border-t border-glass-border">
+        <button
+          onClick={toggleEditMode}
+          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm font-medium ${
+            editMode
+              ? 'bg-accent-light/20 text-accent-light'
+              : 'text-white/50 hover:bg-white/5 hover:text-white/70'
+          }`}
+        >
+          <Icon path={editMode ? mdiCheck : mdiPencil} size={20} />
+          <span className="hidden lg:block">
+            {editMode ? t('edit.exitEdit') : t('edit.editMode')}
+          </span>
+        </button>
+      </div>
 
       {/* Connection Status */}
       <ConnectionStatus />

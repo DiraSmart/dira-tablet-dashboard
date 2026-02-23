@@ -30,7 +30,7 @@ app.use('/api', configRoutes(configService));
 app.use('/api', discoveryRoutes(configService));
 
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', version: '0.6.0', addon: IS_ADDON });
+  res.json({ status: 'ok', version: '0.8.0', addon: IS_ADDON });
 });
 
 // Auth info endpoint - tells the frontend how to connect
@@ -45,7 +45,7 @@ app.get('/api/auth', (_req, res) => {
 // Debug endpoint - helps diagnose connection issues
 app.get('/api/debug', async (_req, res) => {
   const info: Record<string, unknown> = {
-    version: '0.6.0',
+    version: '0.8.0',
     addon: IS_ADDON,
     supervisorToken: !!process.env.SUPERVISOR_TOKEN,
     nodeVersion: process.version,

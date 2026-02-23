@@ -2,6 +2,7 @@ import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityCard } from '@/components/cards/EntityCard';
 import { Icon } from '@/components/common/Icon';
+import { EditableCardWrapper } from '@/components/common/EditOverlay';
 import { useConfigStore } from '@/store/configStore';
 import { useEntityStore } from '@/store/entityStore';
 import { useAppStore } from '@/store/appStore';
@@ -63,7 +64,9 @@ export const AreaDetailView = memo(function AreaDetailView({ areaId }: AreaDetai
           </h2>
           <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {group.entityIds.map((id) => (
-              <EntityCard key={id} entityId={id} />
+              <EditableCardWrapper key={id} entityId={id}>
+                <EntityCard entityId={id} />
+              </EditableCardWrapper>
             ))}
           </div>
         </section>

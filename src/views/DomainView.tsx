@@ -2,6 +2,7 @@ import { memo, useMemo, type ComponentType } from 'react';
 import { useEntityStore } from '@/store/entityStore';
 import { useConfigStore } from '@/store/configStore';
 import { EmptyState } from '@/components/common/EmptyState';
+import { EditableCardWrapper } from '@/components/common/EditOverlay';
 
 interface DomainViewProps {
   domains: string[];
@@ -62,7 +63,9 @@ export const DomainView = memo(function DomainView({
           </h2>
           <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {group.entityIds.map((id) => (
-              <CardComponent key={id} entityId={id} />
+              <EditableCardWrapper key={id} entityId={id}>
+                <CardComponent entityId={id} />
+              </EditableCardWrapper>
             ))}
           </div>
         </section>

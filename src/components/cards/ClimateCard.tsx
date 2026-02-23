@@ -1,7 +1,7 @@
 import { memo, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GlassCard } from '@/components/common/GlassCard';
-import { Icon } from '@/components/common/Icon';
+import { IconPill } from '@/components/common/IconPill';
 import { Slider } from '@/components/controls/Slider';
 import { useEntity } from '@/store/entityStore';
 import { useHAConnection } from '@/context/HAConnectionContext';
@@ -13,6 +13,8 @@ import { cn } from '@/utils/cn';
 interface ClimateCardProps {
   entityId: string;
 }
+
+const CLIMATE_COLOR = '#3B82F6';
 
 export const ClimateCard = memo(function ClimateCard({ entityId }: ClimateCardProps) {
   const entity = useEntity(entityId);
@@ -44,18 +46,26 @@ export const ClimateCard = memo(function ClimateCard({ entityId }: ClimateCardPr
   const hvacModes: string[] = entity.attributes.hvac_modes || [];
   const name = getEntityName(entity);
 
+  const fillPercent = isActive && targetTemp !== undefined
+    ? ((targetTemp - minTemp) / (maxTemp - minTemp)) * 100
+    : 0;
+
   return (
-    <GlassCard glowColor={isActive ? '#3B82F6' : undefined}>
-      <div className="flex items-center justify-between" onClick={() => setExpanded(!expanded)}>
+    <GlassCard
+      glowColor={isActive ? CLIMATE_COLOR : undefined}
+      fillPercent={fillPercent}
+      fillColor={CLIMATE_COLOR}
+    >
+      <div
+        className="flex items-center justify-between cursor-pointer"
+        onClick={() => setExpanded(!expanded)}
+      >
         <div className="flex items-center gap-3 min-w-0">
-          <div
-            className={cn(
-              'w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
-              isActive ? 'bg-accent-climate/20 text-accent-climate' : 'bg-white/5 text-white/30',
-            )}
-          >
-            <Icon path={CLIMATE_MODE_ICONS[entity.state] || mdiThermometer} size={20} />
-          </div>
+          <IconPill
+            icon={CLIMATE_MODE_ICONS[entity.state] || mdiThermometer}
+            active={isActive}
+            color={CLIMATE_COLOR}
+          />
           <div className="min-w-0">
             <p className="text-sm font-medium text-white truncate">{name}</p>
             <p className="text-xs text-white/50">
@@ -79,7 +89,7 @@ export const ClimateCard = memo(function ClimateCard({ entityId }: ClimateCardPr
                 onChange={handleTempChange}
                 min={minTemp}
                 max={maxTemp}
-                color="#3B82F6"
+                color={CLIMATE_COLOR}
               />
             </div>
           )}

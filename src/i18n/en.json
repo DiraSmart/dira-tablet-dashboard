@@ -83,6 +83,18 @@
     "connecting": "Connecting",
     "error": "Error"
   },
+  "edit": {
+    "editMode": "Edit mode",
+    "exitEdit": "Exit edit mode",
+    "entityName": "Name",
+    "entityNamePlaceholder": "Custom name",
+    "entityVisible": "Visible",
+    "entityHidden": "Hidden",
+    "areaName": "Area name",
+    "areaNamePlaceholder": "Custom name",
+    "areaVisible": "Visible",
+    "done": "Done"
+  },
   "common": {
     "on": "On",
     "off": "Off",

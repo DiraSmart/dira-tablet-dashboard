@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { DashboardConfig, AreaConfig } from '@/types/config';
+import type { DashboardConfig, AreaConfig, EntityOverride } from '@/types/config';
 import { getApiBaseUrl } from '@/utils/urlHelpers';
 
 interface ConfigStore {
@@ -13,6 +13,7 @@ interface ConfigStore {
   updateArea: (areaId: string, updates: Partial<AreaConfig>) => void;
   reorderAreas: (orderedIds: string[]) => void;
   toggleAreaVisibility: (areaId: string) => void;
+  updateEntityOverride: (entityId: string, override: EntityOverride) => void;
   clearConfig: () => void;
 }
 
@@ -83,6 +84,34 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
         a.areaId === areaId ? { ...a, visible: !a.visible } : a,
       ),
     };
+    set({ config: newConfig });
+    get().saveConfig(newConfig);
+  },
+
+  updateEntityOverride: (entityId, override) => {
+    const config = get().config;
+    if (!config) return;
+
+    // Find which area owns this entity and update its override
+    let found = false;
+    const newAreas = config.areas.map((area) => {
+      if (area.entityIds.includes(entityId)) {
+        found = true;
+        return {
+          ...area,
+          entityOverrides: { ...area.entityOverrides, [entityId]: { ...area.entityOverrides[entityId], ...override } },
+        };
+      }
+      return area;
+    });
+
+    // Also update global overrides
+    const newGlobal = {
+      ...config.globalEntityOverrides,
+      [entityId]: { ...config.globalEntityOverrides[entityId], ...override },
+    };
+
+    const newConfig = { ...config, areas: found ? newAreas : config.areas, globalEntityOverrides: newGlobal };
     set({ config: newConfig });
     get().saveConfig(newConfig);
   },

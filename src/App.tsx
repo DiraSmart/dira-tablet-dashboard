@@ -4,6 +4,8 @@ import { HAConnectionProvider, useHAConnection } from '@/context/HAConnectionCon
 import { useConfigStore } from '@/store/configStore';
 import { useAppStore } from '@/store/appStore';
 import { Sidebar } from '@/components/layout/Sidebar';
+import { EntityEditSheet } from '@/components/settings/EntityEditSheet';
+import { AreaEditSheet } from '@/components/settings/AreaEditSheet';
 import { SetupView } from '@/views/SetupView';
 import { HomeView } from '@/views/HomeView';
 import { LightsView } from '@/views/LightsView';
@@ -133,6 +135,9 @@ function DashboardContent() {
 
   const ViewComponent = VIEW_MAP[activeView] || HomeView;
 
+  const editingEntityId = useAppStore((s) => s.editingEntityId);
+  const editingAreaId = useAppStore((s) => s.editingAreaId);
+
   return (
     <div className="flex h-full overflow-hidden">
       <Sidebar />
@@ -143,6 +148,8 @@ function DashboardContent() {
           <ViewComponent />
         )}
       </main>
+      {editingEntityId && <EntityEditSheet />}
+      {editingAreaId && <AreaEditSheet />}
     </div>
   );
 }
