@@ -14,7 +14,14 @@ const PORT = parseInt(process.env.PORT || '3000');
 const IS_ADDON = process.env.ADDON === 'true';
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
 const SUPERVISOR_TOKEN = process.env.SUPERVISOR_TOKEN || '';
-const HA_WS_URL = 'ws://supervisor/core/websocket';
+
+// Try multiple HA Core WebSocket URLs - different HA versions use different internal hostnames
+const HA_WS_URLS = [
+  'ws://supervisor/core/websocket',
+  'ws://homeassistant:8123/api/websocket',
+  'ws://localhost:8123/api/websocket',
+  'ws://127.0.0.1:8123/api/websocket',
+];
 
 app.use(express.json({ limit: '10mb' }));
 
@@ -35,29 +42,33 @@ app.use('/api', configRoutes(configService));
 app.use('/api', discoveryRoutes(configService));
 
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', version: '0.8.0', addon: IS_ADDON });
+  res.json({ status: 'ok', version: '0.8.1', addon: IS_ADDON });
 });
 
-// Auth info endpoint - tells the frontend how to connect
+// Auth info endpoint
 app.get('/api/auth', (_req, res) => {
   if (IS_ADDON) {
-    // In ingress mode, the frontend connects through our WebSocket proxy
-    // so it doesn't need OAuth or tokens at all
     res.json({ mode: 'ingress' });
   } else {
     res.json({ mode: 'standalone' });
   }
 });
 
-// Debug endpoint - helps diagnose connection issues
+// Enhanced debug endpoint - tests connectivity to HA Core
 app.get('/api/debug', async (_req, res) => {
   const info: Record<string, unknown> = {
-    version: '0.8.0',
+    version: '0.8.1',
     addon: IS_ADDON,
     supervisorToken: !!SUPERVISOR_TOKEN,
+    supervisorTokenLength: SUPERVISOR_TOKEN.length,
     nodeVersion: process.version,
+    env: {
+      ADDON: process.env.ADDON,
+      SUPERVISOR_TOKEN: SUPERVISOR_TOKEN ? `${SUPERVISOR_TOKEN.substring(0, 8)}...` : 'not set',
+    },
   };
 
+  // Test Supervisor REST API
   if (IS_ADDON && SUPERVISOR_TOKEN) {
     try {
       const r = await fetch('http://supervisor/core/api/', {
@@ -67,20 +78,102 @@ app.get('/api/debug', async (_req, res) => {
     } catch (e: any) {
       info.supervisorCoreApi = { error: e.message };
     }
+
+    // Test direct HA Core REST API
+    try {
+      const r = await fetch('http://homeassistant:8123/api/', {
+        headers: { Authorization: `Bearer ${SUPERVISOR_TOKEN}` },
+      });
+      const body = await r.text();
+      info.directHaCoreApi = { status: r.status, ok: r.ok, body: body.substring(0, 200) };
+    } catch (e: any) {
+      info.directHaCoreApi = { error: e.message };
+    }
+  }
+
+  // Test WebSocket connectivity
+  if (IS_ADDON && SUPERVISOR_TOKEN) {
+    const wsResults: Record<string, unknown> = {};
+    const testPromises = HA_WS_URLS.map((url) =>
+      testWsConnection(url).then((result) => {
+        wsResults[url] = result;
+      }),
+    );
+    await Promise.all(testPromises);
+    info.wsTests = wsResults;
   }
 
   res.json(info);
 });
 
+// Test a WebSocket connection to HA Core
+function testWsConnection(url: string): Promise<Record<string, unknown>> {
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      ws.close();
+      resolve({ error: 'timeout (5s)', connected: false });
+    }, 5000);
+
+    const ws = new WebSocket(url);
+
+    ws.on('open', () => {
+      // Connected, wait for auth_required
+    });
+
+    ws.on('message', (data) => {
+      try {
+        const msg = JSON.parse(data.toString());
+        if (msg.type === 'auth_required') {
+          // Try authenticating with Supervisor token
+          ws.send(JSON.stringify({ type: 'auth', access_token: SUPERVISOR_TOKEN }));
+        } else if (msg.type === 'auth_ok') {
+          clearTimeout(timeout);
+          ws.close();
+          resolve({ connected: true, authenticated: true, ha_version: msg.ha_version });
+        } else if (msg.type === 'auth_invalid') {
+          clearTimeout(timeout);
+          ws.close();
+          resolve({ connected: true, authenticated: false, message: msg.message });
+        }
+      } catch {
+        clearTimeout(timeout);
+        ws.close();
+        resolve({ connected: true, parseError: true });
+      }
+    });
+
+    ws.on('error', (err) => {
+      clearTimeout(timeout);
+      resolve({ connected: false, error: err.message });
+    });
+  });
+}
+
 // ─── WebSocket proxy (ingress mode only) ───
-// The frontend connects to our /api/websocket, and we proxy to HA Core's
-// WebSocket using the Supervisor token. This avoids OAuth redirect issues
-// and works from ANY device that can access HA ingress.
+// Finds a working HA Core WebSocket URL and proxies connections through it.
+let workingWsUrl: string | null = null;
+
 if (IS_ADDON && SUPERVISOR_TOKEN) {
   const wss = new WebSocketServer({ noServer: true });
 
+  // On startup, find a working HA WebSocket URL
+  (async () => {
+    for (const url of HA_WS_URLS) {
+      console.log(`[WS Proxy] Testing ${url}...`);
+      const result = await testWsConnection(url);
+      console.log(`[WS Proxy] ${url} →`, JSON.stringify(result));
+      if (result.authenticated) {
+        workingWsUrl = url;
+        console.log(`[WS Proxy] Using ${url} for WebSocket proxy`);
+        break;
+      }
+    }
+    if (!workingWsUrl) {
+      console.error('[WS Proxy] No working HA WebSocket URL found! Proxy will not work.');
+    }
+  })();
+
   server.on('upgrade', (req, socket, head) => {
-    // Accept WebSocket upgrades on /api/websocket (with or without ingress path prefix)
     const url = req.url || '';
     if (url.endsWith('/api/websocket') || url === '/api/websocket') {
       wss.handleUpgrade(req, socket, head, (clientWs) => {
@@ -92,14 +185,20 @@ if (IS_ADDON && SUPERVISOR_TOKEN) {
   });
 
   function handleWsProxy(clientWs: WebSocket) {
-    // Connect to HA Core via Supervisor internal network
-    const haWs = new WebSocket(HA_WS_URL);
+    if (!workingWsUrl) {
+      console.error('[WS Proxy] No working HA URL available');
+      clientWs.send(JSON.stringify({ type: 'auth_invalid', message: 'No HA connection available' }));
+      clientWs.close();
+      return;
+    }
+
+    const haWs = new WebSocket(workingWsUrl);
     let haAuthenticated = false;
-    let clientAuthenticated = false;
+    let clientAuthPending = false;
     const pendingMessages: string[] = [];
 
     haWs.on('open', () => {
-      console.log('[WS Proxy] Connected to HA Core');
+      console.log('[WS Proxy] Connected to HA Core at', workingWsUrl);
     });
 
     haWs.on('message', (data) => {
@@ -107,24 +206,19 @@ if (IS_ADDON && SUPERVISOR_TOKEN) {
       try {
         const parsed = JSON.parse(msg);
 
-        // HA sends auth_required - we authenticate with Supervisor token
         if (parsed.type === 'auth_required') {
-          haWs.send(JSON.stringify({
-            type: 'auth',
-            access_token: SUPERVISOR_TOKEN,
-          }));
+          haWs.send(JSON.stringify({ type: 'auth', access_token: SUPERVISOR_TOKEN }));
           return;
         }
 
-        // HA confirms our auth - now tell the client it can proceed
         if (parsed.type === 'auth_ok') {
           haAuthenticated = true;
-          // If client already sent auth, confirm them too
-          if (!clientAuthenticated) {
-            clientAuthenticated = true;
+          console.log('[WS Proxy] Authenticated with HA Core');
+          // If client already sent auth, respond now
+          if (clientAuthPending) {
             clientWs.send(JSON.stringify({ type: 'auth_ok', ha_version: parsed.ha_version }));
           }
-          // Flush any messages the client sent while we were authenticating
+          // Flush queued messages
           for (const queued of pendingMessages) {
             haWs.send(queued);
           }
@@ -133,18 +227,17 @@ if (IS_ADDON && SUPERVISOR_TOKEN) {
         }
 
         if (parsed.type === 'auth_invalid') {
-          console.error('[WS Proxy] HA rejected Supervisor token:', parsed.message);
+          console.error('[WS Proxy] Auth rejected:', parsed.message);
           clientWs.send(JSON.stringify({ type: 'auth_invalid', message: 'Proxy auth failed' }));
           clientWs.close();
           return;
         }
 
-        // All other messages: forward to client
+        // Forward all other messages to client
         if (clientWs.readyState === WebSocket.OPEN) {
           clientWs.send(msg);
         }
       } catch {
-        // Non-JSON message, forward as-is
         if (clientWs.readyState === WebSocket.OPEN) {
           clientWs.send(msg);
         }
@@ -156,35 +249,28 @@ if (IS_ADDON && SUPERVISOR_TOKEN) {
       try {
         const parsed = JSON.parse(msg);
 
-        // Client sends auth - we handle it ourselves (the proxy authenticates for them)
+        // Intercept client auth - we handle auth ourselves
         if (parsed.type === 'auth') {
-          // Send auth_required first so the library protocol is satisfied
-          // then auth_ok if HA is already authenticated
+          clientAuthPending = true;
           if (haAuthenticated) {
-            clientAuthenticated = true;
             clientWs.send(JSON.stringify({ type: 'auth_ok', ha_version: '' }));
           }
-          // If HA isn't authenticated yet, we'll send auth_ok when it is
           return;
         }
 
-        // All other messages: forward to HA (or queue if not yet authenticated)
-        if (haAuthenticated) {
-          if (haWs.readyState === WebSocket.OPEN) {
-            haWs.send(msg);
-          }
+        // Forward to HA or queue
+        if (haAuthenticated && haWs.readyState === WebSocket.OPEN) {
+          haWs.send(msg);
         } else {
           pendingMessages.push(msg);
         }
       } catch {
-        // Non-JSON, forward
         if (haAuthenticated && haWs.readyState === WebSocket.OPEN) {
           haWs.send(msg);
         }
       }
     });
 
-    // Clean up on close
     clientWs.on('close', () => {
       if (haWs.readyState === WebSocket.OPEN || haWs.readyState === WebSocket.CONNECTING) {
         haWs.close();
@@ -199,17 +285,17 @@ if (IS_ADDON && SUPERVISOR_TOKEN) {
 
     clientWs.on('error', () => haWs.close());
     haWs.on('error', (err) => {
-      console.error('[WS Proxy] HA WebSocket error:', err.message);
+      console.error('[WS Proxy] Error:', err.message);
       if (clientWs.readyState === WebSocket.OPEN) {
         clientWs.close();
       }
     });
 
-    // Send auth_required to client to start the protocol
+    // Start the protocol with the client
     clientWs.send(JSON.stringify({ type: 'auth_required', ha_version: '' }));
   }
 
-  console.log('[WS Proxy] WebSocket proxy enabled for ingress mode');
+  console.log('[WS Proxy] WebSocket proxy enabled');
 }
 
 // Serve SPA in production
@@ -222,7 +308,7 @@ app.get('*', (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Dira Dashboard server running on port ${PORT}`);
+  console.log(`Dira Dashboard v0.8.1 running on port ${PORT}`);
   console.log(`Mode: ${IS_ADDON ? 'Add-on (ingress + WS proxy)' : 'Standalone'}`);
   console.log(`Data dir: ${DATA_DIR}`);
 });
