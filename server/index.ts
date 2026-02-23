@@ -33,6 +33,20 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', version: '0.1.0', addon: IS_ADDON });
 });
 
+// Auth info endpoint - tells the frontend how to connect
+app.get('/api/auth', (_req, res) => {
+  if (IS_ADDON) {
+    // In add-on mode, the frontend should use HA's auth system
+    // The SUPERVISOR_TOKEN lets us talk to HA from the backend
+    res.json({
+      mode: 'ingress',
+      supervisorToken: process.env.SUPERVISOR_TOKEN || null,
+    });
+  } else {
+    res.json({ mode: 'standalone' });
+  }
+});
+
 // Serve SPA in production
 const clientDir = path.join(__dirname, '../client');
 app.use(express.static(clientDir));
