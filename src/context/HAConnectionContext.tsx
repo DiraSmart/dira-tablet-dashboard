@@ -1,6 +1,6 @@
-import { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
 import type { Connection } from 'home-assistant-js-websocket';
-import { connectToHA, connectViaIngress, fetchAuthInfo, type ConnectionOptions, type AuthInfo } from '@/api/connection';
+import { connectToHA, connectViaIngress, fetchAuthInfo, type ConnectionOptions } from '@/api/connection';
 import { useEntityStore } from '@/store/entityStore';
 
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
@@ -31,7 +31,6 @@ export function HAConnectionProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [authMode, setAuthMode] = useState<'ingress' | 'standalone' | null>(null);
   const subscribeEntities = useEntityStore((s) => s.subscribe);
-  const authInfoRef = useRef<AuthInfo | null>(null);
 
   const setupConnection = useCallback((conn: Connection) => {
     setConnection(conn);
@@ -73,14 +72,12 @@ export function HAConnectionProvider({ children }: { children: ReactNode }) {
     }
   }, [setupConnection]);
 
-  // Connect via ingress (add-on mode)
+  // Connect via ingress (add-on mode) through server WebSocket proxy
   const connectIngress = useCallback(async () => {
     setStatus('connecting');
     setError(null);
     try {
-      // Pass the Supervisor token if available - avoids OAuth redirect issues
-      const token = authInfoRef.current?.token;
-      const conn = await connectViaIngress(token);
+      const conn = await connectViaIngress();
       setupConnection(conn);
     } catch (err) {
       setStatus('error');
@@ -92,10 +89,8 @@ export function HAConnectionProvider({ children }: { children: ReactNode }) {
   // On mount: detect auth mode and auto-connect if ingress
   useEffect(() => {
     fetchAuthInfo().then((info) => {
-      authInfoRef.current = info;
       setAuthMode(info.mode);
       if (info.mode === 'ingress') {
-        // Auto-connect in ingress mode using Supervisor token
         connectIngress().catch(() => {
           // Error is set in state, UI will show it
         });

@@ -13,7 +13,6 @@ export interface ConnectionOptions {
 
 export interface AuthInfo {
   mode: 'ingress' | 'standalone';
-  token?: string | null;
 }
 
 // Fetch auth mode from our backend
@@ -34,47 +33,16 @@ export async function connectToHA(options: ConnectionOptions): Promise<Connectio
   return connection;
 }
 
-// Connect in ingress mode using HA's existing auth session
-// Strategy:
-// 1. If a Supervisor token is provided, use it directly (most reliable, works on all devices)
-// 2. Fallback: try localStorage tokens via getAuth() (works if user already logged into HA)
-export async function connectViaIngress(supervisorToken?: string | null): Promise<Connection> {
-  const hassUrl = window.location.origin;
+// Connect in ingress mode through our server's WebSocket proxy.
+// The server authenticates with HA using the Supervisor token,
+// so the frontend doesn't need any OAuth or tokens.
+export async function connectViaIngress(): Promise<Connection> {
+  // Use the ingress base URL so the WebSocket goes through our server proxy
+  // e.g. ws://ha-ip:8123/hassio/ingress/slug/api/websocket
+  const hassUrl = getApiBaseUrl();
 
-  // Strategy 1: Use Supervisor token directly - bypasses OAuth entirely
-  // This works on ANY device that can access the ingress page
-  if (supervisorToken) {
-    const auth = createLongLivedTokenAuth(hassUrl, supervisorToken);
-    const connection = await createConnection({ auth });
-    return connection;
-  }
-
-  // Strategy 2: Fallback to OAuth (dev mode, or if no Supervisor token available)
-  const auth = await getAuth({
-    hassUrl,
-    redirectUrl: `${window.location.origin}${window.location.pathname}`,
-    loadTokens: async () => {
-      try {
-        const stored = localStorage.getItem('hassTokens');
-        if (stored) {
-          return JSON.parse(stored);
-        }
-      } catch {
-        // ignore parse errors
-      }
-      return undefined;
-    },
-    saveTokens: (tokens) => {
-      try {
-        if (tokens) {
-          localStorage.setItem('hassTokens', JSON.stringify(tokens));
-        }
-      } catch {
-        // ignore storage errors
-      }
-    },
-  });
-
+  // Use a dummy token - the server proxy handles real auth with HA
+  const auth = createLongLivedTokenAuth(hassUrl, 'proxy');
   const connection = await createConnection({ auth });
   return connection;
 }
