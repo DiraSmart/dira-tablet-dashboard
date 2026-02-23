@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from 'react';
 import type { Connection } from 'home-assistant-js-websocket';
 import { connectToHA, connectViaIngress, fetchAuthInfo, type ConnectionOptions, type AuthInfo } from '@/api/connection';
 import { useEntityStore } from '@/store/entityStore';
@@ -31,6 +31,7 @@ export function HAConnectionProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [authMode, setAuthMode] = useState<'ingress' | 'standalone' | null>(null);
   const subscribeEntities = useEntityStore((s) => s.subscribe);
+  const authInfoRef = useRef<AuthInfo | null>(null);
 
   const setupConnection = useCallback((conn: Connection) => {
     setConnection(conn);
@@ -77,7 +78,9 @@ export function HAConnectionProvider({ children }: { children: ReactNode }) {
     setStatus('connecting');
     setError(null);
     try {
-      const conn = await connectViaIngress();
+      // Pass the Supervisor token if available - avoids OAuth redirect issues
+      const token = authInfoRef.current?.token;
+      const conn = await connectViaIngress(token);
       setupConnection(conn);
     } catch (err) {
       setStatus('error');
@@ -89,9 +92,10 @@ export function HAConnectionProvider({ children }: { children: ReactNode }) {
   // On mount: detect auth mode and auto-connect if ingress
   useEffect(() => {
     fetchAuthInfo().then((info) => {
+      authInfoRef.current = info;
       setAuthMode(info.mode);
       if (info.mode === 'ingress') {
-        // Auto-connect in ingress mode
+        // Auto-connect in ingress mode using Supervisor token
         connectIngress().catch(() => {
           // Error is set in state, UI will show it
         });

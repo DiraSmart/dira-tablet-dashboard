@@ -36,7 +36,16 @@ app.get('/api/health', (_req, res) => {
 // Auth info endpoint - tells the frontend how to connect
 app.get('/api/auth', (_req, res) => {
   if (IS_ADDON) {
-    res.json({ mode: 'ingress' });
+    // In ingress mode, provide the Supervisor token so the frontend can
+    // connect to HA's WebSocket without needing OAuth (which fails across
+    // devices due to redirect URI mismatches). This is safe because:
+    // - Ingress proxy already ensures the user is authenticated to HA
+    // - The token is only accessible to authenticated HA users
+    // - It rotates on every add-on restart
+    res.json({
+      mode: 'ingress',
+      token: process.env.SUPERVISOR_TOKEN || null,
+    });
   } else {
     res.json({ mode: 'standalone' });
   }

@@ -13,6 +13,7 @@ export interface ConnectionOptions {
 
 export interface AuthInfo {
   mode: 'ingress' | 'standalone';
+  token?: string | null;
 }
 
 // Fetch auth mode from our backend
@@ -34,17 +35,24 @@ export async function connectToHA(options: ConnectionOptions): Promise<Connectio
 }
 
 // Connect in ingress mode using HA's existing auth session
-// The ingress page is on the same origin as HA, so we can read
-// the user's auth tokens from localStorage (key: hassTokens)
-export async function connectViaIngress(): Promise<Connection> {
+// Strategy:
+// 1. If a Supervisor token is provided, use it directly (most reliable, works on all devices)
+// 2. Fallback: try localStorage tokens via getAuth() (works if user already logged into HA)
+export async function connectViaIngress(supervisorToken?: string | null): Promise<Connection> {
   const hassUrl = window.location.origin;
 
-  // getAuth() will:
-  // 1. Try to load tokens from localStorage (same origin = HA's tokens)
-  // 2. If tokens found but expired, auto-refresh them
-  // 3. If no tokens, redirect to HA auth page (user will come back authenticated)
+  // Strategy 1: Use Supervisor token directly - bypasses OAuth entirely
+  // This works on ANY device that can access the ingress page
+  if (supervisorToken) {
+    const auth = createLongLivedTokenAuth(hassUrl, supervisorToken);
+    const connection = await createConnection({ auth });
+    return connection;
+  }
+
+  // Strategy 2: Fallback to OAuth (dev mode, or if no Supervisor token available)
   const auth = await getAuth({
     hassUrl,
+    redirectUrl: `${window.location.origin}${window.location.pathname}`,
     loadTokens: async () => {
       try {
         const stored = localStorage.getItem('hassTokens');
