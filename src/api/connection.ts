@@ -3,6 +3,7 @@ import {
   createLongLivedTokenAuth,
   getAuth,
   type Connection,
+  type AuthData,
 } from 'home-assistant-js-websocket';
 import { getApiBaseUrl } from '@/utils/urlHelpers';
 
@@ -33,16 +34,51 @@ export async function connectToHA(options: ConnectionOptions): Promise<Connectio
   return connection;
 }
 
-// Connect in ingress mode through our server's WebSocket proxy.
-// The server authenticates with HA using the Supervisor token,
-// so the frontend doesn't need any OAuth or tokens.
+// Connect in ingress mode using HA's existing auth session.
+// Since ingress runs on the same origin as HA frontend,
+// we can read auth tokens directly from localStorage.
 export async function connectViaIngress(): Promise<Connection> {
-  // Use the ingress base URL so the WebSocket goes through our server proxy
-  // e.g. ws://ha-ip:8123/hassio/ingress/slug/api/websocket
-  const hassUrl = getApiBaseUrl();
+  const hassUrl = window.location.origin;
+  const isOAuthCallback = window.location.search.includes('auth_callback=1');
 
-  // Use a dummy token - the server proxy handles real auth with HA
-  const auth = createLongLivedTokenAuth(hassUrl, 'proxy');
+  // Pre-check: ensure tokens exist before calling getAuth().
+  // If no tokens and not returning from OAuth, DON'T let getAuth()
+  // redirect to OAuth (which causes "invalid redirect URI" errors).
+  const stored = localStorage.getItem('hassTokens');
+  if (!stored && !isOAuthCallback) {
+    throw new Error('NO_HA_TOKENS');
+  }
+
+  const auth = await getAuth({
+    hassUrl,
+    loadTokens: async () => {
+      try {
+        const raw = localStorage.getItem('hassTokens');
+        if (raw) {
+          const tokens = JSON.parse(raw) as AuthData;
+          // Override hassUrl to match current origin.
+          // Tokens might have been saved with a different hostname
+          // (e.g., homeassistant.local vs 192.168.1.x) but they're
+          // still valid - the access_token/refresh_token work regardless.
+          tokens.hassUrl = hassUrl;
+          return tokens;
+        }
+      } catch {
+        // ignore parse errors
+      }
+      return undefined;
+    },
+    saveTokens: (tokens) => {
+      try {
+        if (tokens) {
+          localStorage.setItem('hassTokens', JSON.stringify(tokens));
+        }
+      } catch {
+        // ignore storage errors
+      }
+    },
+  });
+
   const connection = await createConnection({ auth });
   return connection;
 }

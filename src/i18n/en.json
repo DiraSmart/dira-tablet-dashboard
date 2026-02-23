@@ -64,7 +64,10 @@
     "connect": "Connect",
     "connecting": "Connecting...",
     "error": "Connection error",
-    "errorDesc": "Check the URL and token and try again"
+    "errorDesc": "Check the URL and token and try again",
+    "noTokens": "Session not found",
+    "noTokensDesc": "Open Home Assistant in your browser and log in first. Then reopen Dira.",
+    "retry": "Retry"
   },
   "settings": {
     "title": "Settings",

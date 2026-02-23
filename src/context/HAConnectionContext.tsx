@@ -72,7 +72,7 @@ export function HAConnectionProvider({ children }: { children: ReactNode }) {
     }
   }, [setupConnection]);
 
-  // Connect via ingress (add-on mode) through server WebSocket proxy
+  // Connect via ingress (add-on mode)
   const connectIngress = useCallback(async () => {
     setStatus('connecting');
     setError(null);

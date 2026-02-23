@@ -64,7 +64,10 @@
     "connect": "Conectar",
     "connecting": "Conectando...",
     "error": "Error de conexi\u00f3n",
-    "errorDesc": "Verific\u00e1 la URL y el token e intent\u00e1 de nuevo"
+    "errorDesc": "Verific\u00e1 la URL y el token e intent\u00e1 de nuevo",
+    "noTokens": "Sesi\u00f3n no encontrada",
+    "noTokensDesc": "Abr\u00ed Home Assistant desde el navegador e inici\u00e1 sesi\u00f3n primero. Luego volv\u00e9 a abrir Dira.",
+    "retry": "Reintentar"
   },
   "settings": {
     "title": "Configuraci\u00f3n",

@@ -34,7 +34,7 @@ function DashboardContent() {
   const config = useConfigStore((s) => s.config);
   const fetchConfig = useConfigStore((s) => s.fetchConfig);
   const setConfig = useConfigStore((s) => s.setConfig);
-  const { connection, connect, status, authMode } = useHAConnection();
+  const { connection, connect, connectIngress, status, error, authMode } = useHAConnection();
   const activeView = useAppStore((s) => s.activeView);
   const selectedAreaId = useAppStore((s) => s.selectedAreaId);
   const editingEntityId = useAppStore((s) => s.editingEntityId);
@@ -98,11 +98,28 @@ function DashboardContent() {
     }
 
     if (status === 'error') {
+      const isNoTokens = error === 'NO_HA_TOKENS';
       return (
         <div className="h-full flex items-center justify-center p-6">
           <div className="text-center max-w-md">
-            <p className="text-red-400 text-lg font-medium mb-2">{t('setup.error')}</p>
-            <p className="text-white/50 text-sm">{t('setup.errorDesc')}</p>
+            <p className="text-red-400 text-lg font-medium mb-2">
+              {isNoTokens ? t('setup.noTokens') : t('setup.error')}
+            </p>
+            <p className="text-white/50 text-sm mb-4">
+              {isNoTokens ? t('setup.noTokensDesc') : t('setup.errorDesc')}
+            </p>
+            <button
+              onClick={() => {
+                if (isNoTokens) {
+                  window.location.reload();
+                } else {
+                  connectIngress().catch(() => {});
+                }
+              }}
+              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm transition-colors"
+            >
+              {t('setup.retry')}
+            </button>
           </div>
         </div>
       );
