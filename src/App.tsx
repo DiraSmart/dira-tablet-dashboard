@@ -37,6 +37,8 @@ function DashboardContent() {
   const { connection, connect, status, authMode } = useHAConnection();
   const activeView = useAppStore((s) => s.activeView);
   const selectedAreaId = useAppStore((s) => s.selectedAreaId);
+  const editingEntityId = useAppStore((s) => s.editingEntityId);
+  const editingAreaId = useAppStore((s) => s.editingAreaId);
   const discoveryDone = useRef(false);
 
   // Load config on mount
@@ -134,9 +136,6 @@ function DashboardContent() {
   }
 
   const ViewComponent = VIEW_MAP[activeView] || HomeView;
-
-  const editingEntityId = useAppStore((s) => s.editingEntityId);
-  const editingAreaId = useAppStore((s) => s.editingAreaId);
 
   return (
     <div className="flex h-full overflow-hidden">
