@@ -37,17 +37,10 @@ export async function connectToHA(options: ConnectionOptions): Promise<Connectio
 // Connect in ingress mode using HA's existing auth session.
 // Since ingress runs on the same origin as HA frontend,
 // we can read auth tokens directly from localStorage.
+// In the Companion App, getAuth() handles auth via OAuth redirect
+// which the app manages natively.
 export async function connectViaIngress(): Promise<Connection> {
   const hassUrl = window.location.origin;
-  const isOAuthCallback = window.location.search.includes('auth_callback=1');
-
-  // Pre-check: ensure tokens exist before calling getAuth().
-  // If no tokens and not returning from OAuth, DON'T let getAuth()
-  // redirect to OAuth (which causes "invalid redirect URI" errors).
-  const stored = localStorage.getItem('hassTokens');
-  if (!stored && !isOAuthCallback) {
-    throw new Error('NO_HA_TOKENS');
-  }
 
   const auth = await getAuth({
     hassUrl,
