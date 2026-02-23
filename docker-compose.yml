@@ -1,0 +1,17 @@
+version: '3.8'
+services:
+  dira-dashboard:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - ADDON=false
+      - DATA_DIR=/data
+    volumes:
+      - dira-data:/data
+    restart: unless-stopped
+
+volumes:
+  dira-data:

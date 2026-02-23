@@ -1,0 +1,97 @@
+{
+  "app": {
+    "name": "Dira"
+  },
+  "sidebar": {
+    "home": "Inicio",
+    "lights": "Luces",
+    "climate": "Clima",
+    "covers": "Cortinas",
+    "cameras": "C\u00e1maras",
+    "security": "Seguridad",
+    "settings": "Configuraci\u00f3n"
+  },
+  "home": {
+    "title": "Mi Casa",
+    "lightsOn": "{{count}} luz encendida",
+    "lightsOn_plural": "{{count}} luces encendidas",
+    "noAreas": "No se encontraron \u00e1reas",
+    "noAreasDesc": "Configur\u00e1 tus \u00e1reas en Home Assistant para verlas aqu\u00ed"
+  },
+  "lights": {
+    "title": "Luces",
+    "on": "Encendida",
+    "off": "Apagada",
+    "brightness": "Brillo",
+    "allOff": "Todas apagadas"
+  },
+  "climate": {
+    "title": "Clima",
+    "heating": "Calefacci\u00f3n",
+    "cooling": "Refrigeraci\u00f3n",
+    "auto": "Autom\u00e1tico",
+    "off": "Apagado",
+    "targetTemp": "Temperatura objetivo"
+  },
+  "covers": {
+    "title": "Cortinas",
+    "open": "Abierta",
+    "closed": "Cerrada",
+    "opening": "Abriendo",
+    "closing": "Cerrando",
+    "position": "Posici\u00f3n"
+  },
+  "cameras": {
+    "title": "C\u00e1maras",
+    "live": "En vivo",
+    "idle": "Inactiva"
+  },
+  "security": {
+    "title": "Seguridad",
+    "locked": "Cerrada",
+    "unlocked": "Abierta",
+    "lock": "Cerrar",
+    "unlock": "Abrir"
+  },
+  "setup": {
+    "title": "Configurar Dira",
+    "subtitle": "Conect\u00e1 tu Home Assistant",
+    "hassUrl": "URL de Home Assistant",
+    "hassUrlPlaceholder": "http://homeassistant.local:8123",
+    "token": "Token de acceso",
+    "tokenPlaceholder": "Tu long-lived access token",
+    "tokenHelp": "Gener\u00e1 un token en tu perfil de HA: Perfil \u2192 Tokens de acceso de larga duraci\u00f3n",
+    "connect": "Conectar",
+    "connecting": "Conectando...",
+    "error": "Error de conexi\u00f3n",
+    "errorDesc": "Verific\u00e1 la URL y el token e intent\u00e1 de nuevo"
+  },
+  "settings": {
+    "title": "Configuraci\u00f3n",
+    "language": "Idioma",
+    "areas": "\u00c1reas",
+    "entities": "Entidades",
+    "general": "General",
+    "export": "Exportar configuraci\u00f3n",
+    "import": "Importar configuraci\u00f3n",
+    "rediscover": "Re-descubrir entidades",
+    "disconnect": "Desconectar"
+  },
+  "connection": {
+    "connected": "Conectado",
+    "disconnected": "Desconectado",
+    "connecting": "Conectando",
+    "error": "Error"
+  },
+  "common": {
+    "on": "Encendido",
+    "off": "Apagado",
+    "unknown": "Desconocido",
+    "unavailable": "No disponible",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "back": "Volver"
+  }
+}

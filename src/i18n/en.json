@@ -1,0 +1,97 @@
+{
+  "app": {
+    "name": "Dira"
+  },
+  "sidebar": {
+    "home": "Home",
+    "lights": "Lights",
+    "climate": "Climate",
+    "covers": "Covers",
+    "cameras": "Cameras",
+    "security": "Security",
+    "settings": "Settings"
+  },
+  "home": {
+    "title": "My Home",
+    "lightsOn": "{{count}} light on",
+    "lightsOn_plural": "{{count}} lights on",
+    "noAreas": "No areas found",
+    "noAreasDesc": "Set up your areas in Home Assistant to see them here"
+  },
+  "lights": {
+    "title": "Lights",
+    "on": "On",
+    "off": "Off",
+    "brightness": "Brightness",
+    "allOff": "All off"
+  },
+  "climate": {
+    "title": "Climate",
+    "heating": "Heating",
+    "cooling": "Cooling",
+    "auto": "Auto",
+    "off": "Off",
+    "targetTemp": "Target temperature"
+  },
+  "covers": {
+    "title": "Covers",
+    "open": "Open",
+    "closed": "Closed",
+    "opening": "Opening",
+    "closing": "Closing",
+    "position": "Position"
+  },
+  "cameras": {
+    "title": "Cameras",
+    "live": "Live",
+    "idle": "Idle"
+  },
+  "security": {
+    "title": "Security",
+    "locked": "Locked",
+    "unlocked": "Unlocked",
+    "lock": "Lock",
+    "unlock": "Unlock"
+  },
+  "setup": {
+    "title": "Set Up Dira",
+    "subtitle": "Connect your Home Assistant",
+    "hassUrl": "Home Assistant URL",
+    "hassUrlPlaceholder": "http://homeassistant.local:8123",
+    "token": "Access Token",
+    "tokenPlaceholder": "Your long-lived access token",
+    "tokenHelp": "Generate a token in your HA profile: Profile \u2192 Long-lived access tokens",
+    "connect": "Connect",
+    "connecting": "Connecting...",
+    "error": "Connection error",
+    "errorDesc": "Check the URL and token and try again"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "areas": "Areas",
+    "entities": "Entities",
+    "general": "General",
+    "export": "Export configuration",
+    "import": "Import configuration",
+    "rediscover": "Re-discover entities",
+    "disconnect": "Disconnect"
+  },
+  "connection": {
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "connecting": "Connecting",
+    "error": "Error"
+  },
+  "common": {
+    "on": "On",
+    "off": "Off",
+    "unknown": "Unknown",
+    "unavailable": "Unavailable",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "back": "Back"
+  }
+}
