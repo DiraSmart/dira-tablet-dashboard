@@ -1,6 +1,7 @@
 import {
   createConnection,
   createLongLivedTokenAuth,
+  getAuth,
   type Connection,
 } from 'home-assistant-js-websocket';
 import { getApiBaseUrl } from '@/utils/urlHelpers';
@@ -32,15 +33,40 @@ export async function connectToHA(options: ConnectionOptions): Promise<Connectio
   return connection;
 }
 
-// Connect in ingress mode via our backend WebSocket proxy
-// The backend proxies WS connections to HA Core using SUPERVISOR_TOKEN
+// Connect in ingress mode using HA's existing auth session
+// The ingress page is on the same origin as HA, so we can read
+// the user's auth tokens from localStorage (key: hassTokens)
 export async function connectViaIngress(): Promise<Connection> {
-  const baseUrl = getApiBaseUrl();
-  // createLongLivedTokenAuth generates wsUrl as: hassUrl.replace('http','ws') + '/api/websocket'
-  // So if baseUrl = 'https://host/hassio/ingress/slug', wsUrl = 'wss://host/hassio/ingress/slug/api/websocket'
-  // HA ingress proxies this to our backend at ws://addon:3000/api/websocket
-  // Our backend then proxies to ws://supervisor/core/websocket with SUPERVISOR_TOKEN
-  const auth = createLongLivedTokenAuth(baseUrl, 'ingress-proxy');
+  const hassUrl = window.location.origin;
+
+  // getAuth() will:
+  // 1. Try to load tokens from localStorage (same origin = HA's tokens)
+  // 2. If tokens found but expired, auto-refresh them
+  // 3. If no tokens, redirect to HA auth page (user will come back authenticated)
+  const auth = await getAuth({
+    hassUrl,
+    loadTokens: async () => {
+      try {
+        const stored = localStorage.getItem('hassTokens');
+        if (stored) {
+          return JSON.parse(stored);
+        }
+      } catch {
+        // ignore parse errors
+      }
+      return undefined;
+    },
+    saveTokens: (tokens) => {
+      try {
+        if (tokens) {
+          localStorage.setItem('hassTokens', JSON.stringify(tokens));
+        }
+      } catch {
+        // ignore storage errors
+      }
+    },
+  });
+
   const connection = await createConnection({ auth });
   return connection;
 }
