@@ -3,10 +3,18 @@ ARG BUILD_FROM
 # Build stage - clone repo and build
 FROM node:22-alpine AS builder
 
-RUN apk add --no-cache git
+# HA passes BUILD_VERSION per version - using it busts Docker cache
+# so git clone always fetches the latest code
+ARG BUILD_VERSION=dev
 
 WORKDIR /app
-RUN git clone --depth 1 https://github.com/DiraSmart/dira-tablet-dashboard.git .
+
+# Cache buster: fetch latest commit ref (changes on every push)
+ADD https://api.github.com/repos/DiraSmart/dira-tablet-dashboard/git/refs/heads/main /tmp/version.json
+
+RUN apk add --no-cache git && \
+    git clone --depth 1 https://github.com/DiraSmart/dira-tablet-dashboard.git . && \
+    echo "Build version: ${BUILD_VERSION}"
 
 RUN npm ci
 RUN npm run build && npm prune --omit=dev
