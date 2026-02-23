@@ -14,6 +14,7 @@ import { SecurityView } from '@/views/SecurityView';
 import { AreaDetailView } from '@/views/AreaDetailView';
 import { SettingsView } from '@/views/SettingsView';
 import { fetchAreas, fetchDevices, fetchEntityRegistry } from '@/api/areas';
+import { getApiBaseUrl } from '@/utils/urlHelpers';
 import type { ViewId } from '@/types/navigation';
 
 const VIEW_MAP: Record<ViewId, ComponentType> = {
@@ -59,7 +60,7 @@ function DashboardContent() {
             fetchDevices(connection),
             fetchEntityRegistry(connection),
           ]);
-          const res = await fetch('./api/discover', {
+          const res = await fetch(`${getApiBaseUrl()}/api/discover`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

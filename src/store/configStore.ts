@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { DashboardConfig, AreaConfig } from '@/types/config';
+import { getApiBaseUrl } from '@/utils/urlHelpers';
 
 interface ConfigStore {
   config: DashboardConfig | null;
@@ -23,7 +24,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
   fetchConfig: async () => {
     set({ loading: true, error: null });
     try {
-      const res = await fetch('./api/config');
+      const res = await fetch(`${getApiBaseUrl()}/api/config`);
       if (res.status === 404) {
         set({ config: null, loading: false });
         return;
@@ -37,7 +38,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
 
   saveConfig: async (config) => {
     try {
-      await fetch('./api/config', {
+      await fetch(`${getApiBaseUrl()}/api/config`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config),

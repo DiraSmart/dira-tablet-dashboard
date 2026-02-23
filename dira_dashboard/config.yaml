@@ -1,5 +1,5 @@
 name: Dira Dashboard
-version: "0.2.0"
+version: "0.3.0"
 slug: dira_dashboard
 description: Modern glassmorphism tablet dashboard for Home Assistant
 url: https://github.com/DiraSmart/dira-tablet-dashboard

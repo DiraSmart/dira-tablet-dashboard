@@ -1,10 +1,9 @@
 import {
   createConnection,
   createLongLivedTokenAuth,
-  getAuth,
   type Connection,
-  type Auth,
 } from 'home-assistant-js-websocket';
+import { getApiBaseUrl } from '@/utils/urlHelpers';
 
 export interface ConnectionOptions {
   hassUrl: string;
@@ -13,13 +12,13 @@ export interface ConnectionOptions {
 
 export interface AuthInfo {
   mode: 'ingress' | 'standalone';
-  supervisorToken?: string | null;
 }
 
 // Fetch auth mode from our backend
 export async function fetchAuthInfo(): Promise<AuthInfo> {
   try {
-    const res = await fetch('./api/auth');
+    const baseUrl = getApiBaseUrl();
+    const res = await fetch(`${baseUrl}/api/auth`);
     return await res.json();
   } catch {
     return { mode: 'standalone' };
@@ -33,20 +32,15 @@ export async function connectToHA(options: ConnectionOptions): Promise<Connectio
   return connection;
 }
 
-// Connect in ingress mode using HA's existing auth session
+// Connect in ingress mode via our backend WebSocket proxy
+// The backend proxies WS connections to HA Core using SUPERVISOR_TOKEN
 export async function connectViaIngress(): Promise<Connection> {
-  // When running under ingress, the page is served from the same origin as HA.
-  // We use getAuth() which leverages the existing HA session (user is already logged in).
-  const hassUrl = window.location.origin;
-
-  let auth: Auth;
-  try {
-    auth = await getAuth({ hassUrl });
-  } catch {
-    // Fallback: try without hassUrl (auto-detect)
-    auth = await getAuth();
-  }
-
+  const baseUrl = getApiBaseUrl();
+  // createLongLivedTokenAuth generates wsUrl as: hassUrl.replace('http','ws') + '/api/websocket'
+  // So if baseUrl = 'https://host/hassio/ingress/slug', wsUrl = 'wss://host/hassio/ingress/slug/api/websocket'
+  // HA ingress proxies this to our backend at ws://addon:3000/api/websocket
+  // Our backend then proxies to ws://supervisor/core/websocket with SUPERVISOR_TOKEN
+  const auth = createLongLivedTokenAuth(baseUrl, 'ingress-proxy');
   const connection = await createConnection({ auth });
   return connection;
 }
