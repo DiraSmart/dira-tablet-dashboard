@@ -11,7 +11,7 @@ const PORT = parseInt(process.env.PORT || '3000');
 const IS_ADDON = process.env.ADDON === 'true';
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
 
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
 // Ingress header forwarding
 if (IS_ADDON) {
