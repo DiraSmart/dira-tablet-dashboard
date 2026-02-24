@@ -14,49 +14,8 @@ export interface ConnectionOptions {
 
 export interface AuthInfo {
   mode: 'ingress' | 'standalone';
+  token?: string | null;
 }
-
-// ─── Companion App detection & auth ───
-
-// Check if running inside HA Companion App (Android or iOS)
-function isCompanionApp(): boolean {
-  return !!(window as any).externalApp ||
-         !!(window as any).webkit?.messageHandlers?.getExternalAuth;
-}
-
-// Request auth token from the Companion App's native bridge.
-// The app injects window.externalApp (Android) or webkit messageHandlers (iOS).
-// Protocol: call getExternalAuth with a callback name, the app calls the callback
-// with (success: boolean, data: {access_token, expires_in}).
-function requestExternalToken(): Promise<{ access_token: string; expires_in: number }> {
-  return new Promise((resolve, reject) => {
-    const callbackName = `_diraAuth_${Date.now()}`;
-    const timeout = setTimeout(() => {
-      delete (window as any)[callbackName];
-      reject(new Error('External auth timeout'));
-    }, 10000);
-
-    (window as any)[callbackName] = (success: boolean, data: any) => {
-      clearTimeout(timeout);
-      delete (window as any)[callbackName];
-      if (success) {
-        const parsed = typeof data === 'string' ? JSON.parse(data) : data;
-        resolve(parsed);
-      } else {
-        reject(new Error('External auth denied'));
-      }
-    };
-
-    const payload = JSON.stringify({ callback: callbackName });
-    if ((window as any).externalApp) {
-      (window as any).externalApp.getExternalAuth(payload);
-    } else {
-      (window as any).webkit.messageHandlers.getExternalAuth.postMessage({ callback: callbackName });
-    }
-  });
-}
-
-// ─── Public API ───
 
 // Fetch auth mode from our backend
 export async function fetchAuthInfo(): Promise<AuthInfo> {
@@ -78,25 +37,21 @@ export async function connectToHA(options: ConnectionOptions): Promise<Connectio
 
 // Connect in ingress mode.
 // Strategy order:
-// 1. Companion App native auth (window.externalApp / webkit)
-// 2. localStorage tokens from HA frontend (with hassUrl override)
-// 3. OAuth redirect via getAuth() (last resort, may cause redirect URI issues)
-export async function connectViaIngress(): Promise<Connection> {
+// 1. Server-provided token (configured in add-on settings) — works everywhere
+// 2. localStorage tokens from HA frontend session (browser only)
+// 3. OAuth redirect via getAuth() (last resort)
+export async function connectViaIngress(serverToken?: string | null): Promise<Connection> {
   const hassUrl = window.location.origin;
 
-  // Strategy 1: Companion App - get token from native app bridge
-  if (isCompanionApp()) {
-    try {
-      const tokenData = await requestExternalToken();
-      const auth = createLongLivedTokenAuth(hassUrl, tokenData.access_token);
-      const connection = await createConnection({ auth });
-      return connection;
-    } catch {
-      // Fall through to browser strategies
-    }
+  // Strategy 1: Use the long-lived token configured in the add-on settings.
+  // This works on ALL devices (browser, Companion App, any tablet).
+  if (serverToken) {
+    const auth = createLongLivedTokenAuth(hassUrl, serverToken);
+    const connection = await createConnection({ auth });
+    return connection;
   }
 
-  // Strategy 2 & 3: Browser - try localStorage tokens, then OAuth redirect
+  // Strategy 2 & 3: Browser fallback — localStorage tokens, then OAuth redirect
   const auth = await getAuth({
     hassUrl,
     loadTokens: async () => {
@@ -104,10 +59,7 @@ export async function connectViaIngress(): Promise<Connection> {
         const raw = localStorage.getItem('hassTokens');
         if (raw) {
           const tokens = JSON.parse(raw) as AuthData;
-          // Override hassUrl to match current origin.
-          // Tokens might have been saved with a different hostname
-          // (e.g., homeassistant.local vs 192.168.1.x) but they're
-          // still valid - the access_token/refresh_token work regardless.
+          // Override hassUrl to match current origin (cross-hostname support)
           tokens.hassUrl = hassUrl;
           return tokens;
         }

@@ -10,6 +10,8 @@ const app = express();
 const PORT = parseInt(process.env.PORT || '3000');
 const IS_ADDON = process.env.ADDON === 'true';
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
+// Long-lived access token configured by the user in the add-on settings
+const HA_ACCESS_TOKEN = process.env.HA_ACCESS_TOKEN || '';
 
 app.use(express.json({ limit: '10mb' }));
 
@@ -30,13 +32,19 @@ app.use('/api', configRoutes(configService));
 app.use('/api', discoveryRoutes(configService));
 
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', version: '0.8.2', addon: IS_ADDON });
+  res.json({ status: 'ok', version: '0.8.3', addon: IS_ADDON });
 });
 
-// Auth info endpoint
+// Auth info endpoint - provides token to frontend in ingress mode
 app.get('/api/auth', (_req, res) => {
   if (IS_ADDON) {
-    res.json({ mode: 'ingress' });
+    res.json({
+      mode: 'ingress',
+      // Provide the configured token so the frontend can connect
+      // to HA WebSocket from ANY device (browser, Companion App, etc.)
+      // Safe because ingress already requires HA authentication.
+      token: HA_ACCESS_TOKEN || null,
+    });
   } else {
     res.json({ mode: 'standalone' });
   }
@@ -52,7 +60,8 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Dira Dashboard v0.8.2 running on port ${PORT}`);
+  console.log(`Dira Dashboard v0.8.3 running on port ${PORT}`);
   console.log(`Mode: ${IS_ADDON ? 'Add-on' : 'Standalone'}`);
+  console.log(`Access token: ${HA_ACCESS_TOKEN ? 'configured' : 'NOT configured'}`);
   console.log(`Data dir: ${DATA_DIR}`);
 });
